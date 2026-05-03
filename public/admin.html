@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rutograma — Panel Administración</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <img src="/uploads/logo-system.png" id="sidebarLogo" onerror="this.style.display='none'" style="height:36px;margin-bottom:6px;display:none">
+    <div>🗺️ Rutograma</div>
+    <span>Panel de Administración SaaS</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('tenants')" id="nav-tenants">
+      <span class="nav-icon">🏢</span> Clientes / Tenants
+    </div>
+    <div class="nav-item" onclick="showPage('billing')" id="nav-billing">
+      <span class="nav-icon">💳</span> Facturación
+    </div>
+    <div class="nav-item" onclick="showPage('users')" id="nav-users">
+      <span class="nav-icon">👥</span> Usuarios
+    </div>
+    <div class="nav-item" onclick="showPage('riskpoints')" id="nav-riskpoints">
+      <span class="nav-icon">⚠️</span> Puntos de Riesgo
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div id="adminName" style="font-weight:600"></div>
+    <div style="font-size:.75rem;opacity:.6;margin-top:2px">Super Administrador</div>
+    <div style="margin-top:10px">
+      <a href="/" onclick="Auth.logout()" class="btn-logout">🚪 Cerrar Sesión</a>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main-content">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1 id="pageTitle">Dashboard</h1>
+    </div>
+    <div class="topbar-right">
+      <span id="topbarUser" class="topbar-user"></span>
+      <span class="badge-role">Super Admin</span>
+      <a href="/app" class="btn btn-secondary btn-sm" style="text-decoration:none">🗺️ Ir a la App</a>
+    </div>
+  </div>
+
+  <div class="page-content">
+
+    <!-- ════ DASHBOARD ════ -->
+    <div id="page-dashboard">
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card skeleton"></div>
+        <div class="kpi-card skeleton"></div>
+        <div class="kpi-card skeleton"></div>
+        <div class="kpi-card skeleton"></div>
+      </div>
+      <div class="table-card">
+        <div class="table-card-header">
+          <h2>🏢 Clientes Recientes</h2>
+          <button class="btn btn-primary btn-sm" onclick="showPage('tenants')">Ver todos →</button>
+        </div>
+        <div class="table-responsive" id="recentTenantsTable"></div>
+      </div>
+    </div>
+
+    <!-- ════ TENANTS ════ -->
+    <div id="page-tenants" style="display:none">
+      <div class="table-card">
+        <div class="table-card-header">
+          <h2>🏢 Clientes / Tenants</h2>
+          <div style="display:flex;gap:10px;align-items:center">
+            <input type="text" class="search-input" placeholder="🔍 Buscar cliente..." id="tenantSearch" oninput="filterTenants()">
+            <button class="btn btn-primary" onclick="openTenantModal()">+ Nuevo Cliente</button>
+          </div>
+        </div>
+        <div class="table-responsive" id="tenantsTable"></div>
+      </div>
+    </div>
+
+    <!-- ════ BILLING ════ -->
+    <div id="page-billing" style="display:none">
+      <div class="kpi-grid" id="billingKpiGrid">
+        <div class="kpi-card skeleton"></div>
+      </div>
+      <div class="table-card" style="margin-top:16px">
+        <div class="table-card-header">
+          <h2>💳 Facturas</h2>
+          <button class="btn btn-primary" onclick="openInvoiceModal()">+ Nueva Factura</button>
+        </div>
+        <div class="table-responsive" id="invoicesTable"></div>
+      </div>
+    </div>
+
+    <!-- ════ USERS ════ -->
+    <div id="page-users" style="display:none">
+      <div class="table-card">
+        <div class="table-card-header">
+          <h2>👥 Todos los Usuarios</h2>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <select id="userTenantFilter" class="form-control" style="width:220px" onchange="loadUsers()">
+              <option value="">— Todos los clientes —</option>
+            </select>
+            <button class="btn btn-primary" onclick="openUserModal()">+ Nuevo Usuario</button>
+          </div>
+        </div>
+        <div class="table-responsive" id="usersTable"></div>
+      </div>
+    </div>
+
+    <!-- ════ RISK POINTS ════ -->
+    <div id="page-riskpoints" style="display:none">
+      <div class="table-card">
+        <div class="table-card-header">
+          <h2>⚠️ Todos los Puntos de Riesgo</h2>
+        </div>
+        <div class="table-responsive" id="riskTable"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     MODAL: TENANT — COMPLETO CON LOGO/FAVICON/API KEYS
+════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="tenantModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2>🏢 <span id="tenantModalTitle">Nuevo Cliente</span></h2>
+      <button class="btn-close" onclick="closeTenantModal()">✕</button>
+    </div>
+    <input type="hidden" id="tenantId">
+
+    <!-- TABS -->
+    <div class="modal-tabs">
+      <button class="mtab active" onclick="switchTab('info')" id="tab-info">📋 Información</button>
+      <button class="mtab" onclick="switchTab('api')"  id="tab-api">🔑 APIs & Config</button>
+      <button class="mtab" onclick="switchTab('brand')" id="tab-brand">🎨 Marca</button>
+    </div>
+
+    <!-- TAB: INFORMACIÓN -->
+    <div id="tabcontent-info">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre de la Empresa *</label>
+          <input type="text" id="tName" class="form-control" placeholder="Empresa de Transporte S.A.">
+        </div>
+        <div class="form-group">
+          <label>Dominio</label>
+          <input type="text" id="tDomain" class="form-control" placeholder="empresa.rutograma.com">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Plan de Servicio</label>
+        <div class="plan-cards" id="planCards">
+          <div class="plan-card" data-plan="free" onclick="selectPlan('free')">
+            <div class="plan-name">Free</div>
+            <div class="plan-caps">📋 Solo visualización de rutas</div>
+          </div>
+          <div class="plan-card selected" data-plan="basic" onclick="selectPlan('basic')">
+            <div class="plan-name">Basic</div>
+            <div class="plan-caps">🗺️ Rutas + ⚠️ Alertas de riesgo</div>
+          </div>
+          <div class="plan-card" data-plan="pro" onclick="selectPlan('pro')">
+            <div class="plan-name">Pro</div>
+            <div class="plan-caps">✅ Basic + 👁️ Monitor GPS + Waze</div>
+          </div>
+          <div class="plan-card" data-plan="enterprise" onclick="selectPlan('enterprise')">
+            <div class="plan-name">Enterprise</div>
+            <div class="plan-caps">🏆 Todo + API + Soporte prioritario</div>
+          </div>
+        </div>
+        <input type="hidden" id="tPlan" value="basic">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Máx. Usuarios</label>
+          <input type="number" id="tMaxUsers" class="form-control" value="10">
+        </div>
+        <div class="form-group">
+          <label>Máx. Monitores</label>
+          <input type="number" id="tMaxMonitors" class="form-control" value="3">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha de Vencimiento</label>
+          <input type="date" id="tExpires" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Dirección</label>
+          <input type="text" id="tAddress" class="form-control" placeholder="Ciudad, País">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email de Contacto</label>
+          <input type="email" id="tContactEmail" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input type="text" id="tContactPhone" class="form-control">
+        </div>
+      </div>
+
+      <div id="adminFields">
+        <hr style="margin:16px 0;border-color:#f0f0f0">
+        <p style="font-size:.82rem;color:#888;margin-bottom:12px;font-weight:600">👤 Administrador del Tenant (solo al crear)</p>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre Admin *</label><input type="text" id="tAdminName" class="form-control"></div>
+          <div class="form-group"><label>Email Admin *</label><input type="email" id="tAdminEmail" class="form-control"></div>
+        </div>
+        <div class="form-group" id="adminPassField">
+          <label>Contraseña Admin *</label>
+          <input type="password" id="tAdminPass" class="form-control" placeholder="Mínimo 6 caracteres">
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: APIs & Config -->
+    <div id="tabcontent-api" style="display:none">
+      <div class="api-info-box">
+        <strong>🔑 Claves API por Cliente</strong><br>
+        Cada cliente puede usar sus propias claves API. Si no se configuran, el sistema usará las del servidor.
+      </div>
+
+      <div class="form-group">
+        <label>🌤️ OpenWeatherMap API Key</label>
+        <input type="text" id="tWeatherKey" class="form-control" placeholder="Ej: a1b2c3d4e5f6...">
+        <small style="color:#888">Gratis en openweathermap.org — para alertas de clima en ruta</small>
+      </div>
+
+      <div class="form-group">
+        <label>🤖 Anthropic / AI API Key</label>
+        <input type="text" id="tAiKey" class="form-control" placeholder="sk-ant-api03-...">
+        <small style="color:#888">Para análisis inteligente de rutas y puntos de riesgo</small>
+      </div>
+
+      <div class="form-group">
+        <label>🎨 Color Primario de la Marca</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="color" id="tPrimaryColor" value="#1a73e8" style="height:42px;width:80px;border-radius:8px;border:1.5px solid #ddd;cursor:pointer">
+          <input type="text" id="tPrimaryColorHex" class="form-control" value="#1a73e8" placeholder="#1a73e8" style="width:130px"
+            oninput="document.getElementById('tPrimaryColor').value=this.value">
+        </div>
+        <small style="color:#888">Color que verá el cliente en su interfaz de la app</small>
+      </div>
+    </div>
+
+    <!-- TAB: MARCA -->
+    <div id="tabcontent-brand" style="display:none">
+      <div class="form-row">
+        <!-- LOGO -->
+        <div class="form-group">
+          <label>🏷️ Logo de la Empresa</label>
+          <div class="upload-zone" id="logoZone" onclick="document.getElementById('logoInput').click()">
+            <img id="logoPreview" src="" alt="" style="max-height:80px;display:none;border-radius:6px">
+            <div id="logoPlaceholder">
+              <div style="font-size:2rem">🖼️</div>
+              <div style="font-size:.85rem;color:#888">Clic para subir logo<br><small>PNG, JPG, SVG — Máx. 500KB</small></div>
+            </div>
+          </div>
+          <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="previewImage('logoInput','logoPreview','logoPlaceholder')">
+          <button class="btn btn-primary btn-sm mt-1" onclick="uploadImage('logo')" id="uploadLogoBtn" style="display:none;width:100%">
+            ☁️ Guardar Logo
+          </button>
+        </div>
+
+        <!-- FAVICON -->
+        <div class="form-group">
+          <label>⭐ Favicon (ícono del navegador)</label>
+          <div class="upload-zone" id="faviconZone" onclick="document.getElementById('faviconInput').click()">
+            <img id="faviconPreview" src="" alt="" style="max-height:80px;display:none;border-radius:6px">
+            <div id="faviconPlaceholder">
+              <div style="font-size:2rem">🌐</div>
+              <div style="font-size:.85rem;color:#888">Clic para subir favicon<br><small>PNG, ICO — 64×64px ideal</small></div>
+            </div>
+          </div>
+          <input type="file" id="faviconInput" accept="image/*,.ico" style="display:none" onchange="previewImage('faviconInput','faviconPreview','faviconPlaceholder')">
+          <button class="btn btn-primary btn-sm mt-1" onclick="uploadImage('favicon')" id="uploadFaviconBtn" style="display:none;width:100%">
+            ☁️ Guardar Favicon
+          </button>
+        </div>
+      </div>
+
+      <div class="brand-preview-box" id="brandPreviewBox">
+        <div style="font-size:.82rem;color:#888;margin-bottom:8px;font-weight:600">Vista previa del encabezado</div>
+        <div class="brand-header-preview" id="brandHeaderPreview">
+          <img id="previewHeaderLogo" src="" style="height:30px;display:none">
+          <span id="previewHeaderName" style="font-weight:700;font-size:1rem">Empresa</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeTenantModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTenant()">💾 Guardar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL: FACTURA ════════ -->
+<div class="modal-overlay" id="invoiceModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>💳 Nueva Factura</h2>
+      <button class="btn-close" onclick="closeInvoiceModal()">✕</button>
+    </div>
+    <div class="form-group"><label>Cliente *</label>
+      <select id="invTenant" class="form-control"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Monto *</label><input type="number" step="0.01" id="invAmount" class="form-control" placeholder="0.00"></div>
+      <div class="form-group"><label>Moneda</label>
+        <select id="invCurrency" class="form-control">
+          <option value="PEN" selected>🇵🇪 S/ PEN (Soles)</option>
+          <option value="USD">🇺🇸 USD</option><option value="COP">🇨🇴 COP</option>
+          <option value="MXN">🇲🇽 MXN</option><option value="EUR">🇪🇺 EUR</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Descripción</label><input type="text" id="invDesc" class="form-control" placeholder="Licencia mensual Basic — Mayo 2026"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Período Inicio</label><input type="date" id="invStart" class="form-control"></div>
+      <div class="form-group"><label>Período Fin</label><input type="date" id="invEnd" class="form-control"></div>
+    </div>
+    <div class="form-group"><label>Fecha Límite de Pago</label><input type="date" id="invDue" class="form-control"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeInvoiceModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveInvoice()">💾 Crear Factura</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL: USUARIO (CREAR / EDITAR) ════════ -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="userModalTitle">👤 Nuevo Usuario</h2>
+      <button class="btn-close" onclick="closeUserModal()">✕</button>
+    </div>
+    <input type="hidden" id="uId">
+    <div class="form-group" id="uTenantWrap">
+      <label>Cliente *</label>
+      <select id="uTenant" class="form-control"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Nombre *</label><input type="text" id="uName" class="form-control"></div>
+      <div class="form-group"><label>Email *</label><input type="email" id="uEmail" class="form-control"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label id="uPassLabel">Contraseña *</label>
+        <div style="position:relative">
+          <input type="password" id="uPass" class="form-control" placeholder="Mínimo 6 caracteres">
+          <button class="btn-eye" onclick="togglePass('uPass')">👁️</button>
+        </div>
+        <small id="uPassHint" style="color:#888;display:none">Dejar vacío para no cambiar</small>
+      </div>
+      <div class="form-group"><label>Rol</label>
+        <select id="uRole" class="form-control">
+          <option value="user">Usuario</option>
+          <option value="monitor">Monitor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Teléfono</label><input type="text" id="uPhone" class="form-control"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeUserModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveUser()">💾 Guardar Usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL: CAMBIAR CONTRASEÑA ════════ -->
+<div class="modal-overlay" id="changePassModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🔑 Cambiar Contraseña</h2>
+      <button class="btn-close" onclick="closeChangePassword()">✕</button>
+    </div>
+    <p style="font-size:.85rem;color:#666;margin-bottom:16px;background:#f8f9fa;padding:10px;border-radius:8px">
+      👤 <strong id="changePassUserName"></strong>
+    </p>
+    <input type="hidden" id="changePassUserId">
+    <div class="form-group">
+      <label>Nueva Contraseña *</label>
+      <div style="position:relative">
+        <input type="password" id="newPassInput" class="form-control" placeholder="Mínimo 6 caracteres">
+        <button class="btn-eye" onclick="togglePass('newPassInput')">👁️</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Confirmar Contraseña *</label>
+      <div style="position:relative">
+        <input type="password" id="confirmPassInput" class="form-control" placeholder="Repita la contraseña">
+        <button class="btn-eye" onclick="togglePass('confirmPassInput')">👁️</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeChangePassword()">Cancelar</button>
+      <button class="btn btn-warning" onclick="saveNewPassword()">🔑 Cambiar Contraseña</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/utils.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>
