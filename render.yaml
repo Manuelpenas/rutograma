@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: rutograma
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENWEATHER_API_KEY
+        value: 0868a9cbf6d615f3bd32a86acabc2a00
+      - key: PORT
+        value: 3000
