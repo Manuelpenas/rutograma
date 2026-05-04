@@ -8,7 +8,9 @@
 *.db
 *.sqlite
 *.sqlite3
-database/
+database/*.db
+database/*.db-shm
+database/*.db-wal
 
 # Logs
 logs/
@@ -43,3 +45,4 @@ build/
 # Otros
 .vscode/
 .idea/
+.vercel
