@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Rutograma — Monitor</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .monitor-form {
+      background:var(--surface); border-radius:var(--radius);
+      padding:20px; margin:8px; max-height:calc(100vh - 80px); overflow-y:auto;
+    }
+    .session-badge {
+      background:linear-gradient(135deg,#1b5e20,#388e3c); color:#fff;
+      border-radius:var(--radius); padding:14px 18px; margin:8px; display:none;
+    }
+    .session-badge.active { display:block; }
+    .risk-type-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0; }
+    .rtype-btn {
+      padding:10px 6px; border:2px solid var(--border); border-radius:var(--radius-sm);
+      background:var(--surface); cursor:pointer; text-align:center; font-size:.8rem;
+      transition:all .2s;
+    }
+    .rtype-btn:hover, .rtype-btn.selected { border-color:var(--primary); background:#e3f2fd; }
+    .rtype-btn .icon { font-size:1.5rem; display:block; margin-bottom:4px; }
+
+    .summary-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.7);
+      display:none; align-items:center; justify-content:center; z-index:3000;
+    }
+    .summary-overlay.show { display:flex; }
+    .summary-card {
+      background:#fff; border-radius:var(--radius); padding:28px;
+      max-width:500px; width:90%; max-height:85vh; overflow-y:auto;
+    }
+    .add-risk-sheet { padding:16px 20px 28px; }
+    .map-click-hint {
+      position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+      background:rgba(0,0,0,.75); color:#fff; padding:10px 20px;
+      border-radius:20px; font-size:.88rem; z-index:700; display:none;
+    }
+    .map-click-hint.show { display:block; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <span class="logo" id="monLogoWrap">
+    <img id="monLogo" src="" alt="Logo" style="height:28px;display:none;vertical-align:middle;margin-right:6px">
+    <span id="monLogoText">👁️ Monitor</span>
+  </span>
+  <span class="user-badge" id="userBadge"></span>
+  <button class="btn btn-icon" onclick="toggleSessionList()" title="Sesiones anteriores">📋</button>
+  <button class="btn btn-icon" onclick="toggleMapStyleSelectorMon()" title="Estilo mapa">🗺️</button>
+  <button class="btn btn-icon" onclick="Auth.logout()" title="Cerrar sesión">🚪</button>
+</header>
+
+<!-- SELECTOR ESTILO MAPA MONITOR -->
+<div id="mapStyleMon" style="position:fixed;bottom:130px;left:8px;z-index:450;background:var(--surface);border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.2);overflow:hidden;display:none">
+  <div style="padding:6px 10px;font-size:.75rem;font-weight:700;color:#888;border-bottom:1px solid #eee">ESTILO</div>
+  <div class="style-opt" onclick="switchMapStyleMon('openstreet')" data-style="openstreet">OSM</div>
+  <div class="style-opt" onclick="switchMapStyleMon('carto')" data-style="carto">Carto</div>
+  <div class="style-opt" onclick="switchMapStyleMon('satellite')" data-style="satellite">Satélite</div>
+</div>
+
+<!-- FILTRO HISTÓRICO DE ALERTAS -->
+<div class="card" id="historyFilter" style="position:fixed;top:var(--header-h);left:8px;right:8px;max-width:400px;margin:8px auto;padding:12px;z-index:460;display:none">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+    <strong style="flex:1">📋 Filtro Histórico</strong>
+    <button class="btn-close" onclick="toggleHistoryFilter()" style="position:static">✕</button>
+  </div>
+  <div class="form-row">
+    <input type="date" id="histDate" class="form-control" onchange="loadHistoryAlerts()">
+    <select id="histType" class="form-control" onchange="loadHistoryAlerts()">
+      <option value="">Todos los tipos</option>
+      <option value="accident">Accidentes</option>
+      <option value="traffic">Tráfico</option>
+      <option value="weather_rain">Lluvia</option>
+      <option value="weather_fog">Niebla</option>
+      <option value="road_closed">Vía cerrada</option>
+    </select>
+  </div>
+  <div id="historyList" style="max-height:200px;overflow-y:auto;margin-top:8px"></div>
+</div>
+<button class="btn btn-icon" onclick="toggleHistoryFilter()" title="Histórico alertas" style="position:fixed;bottom:180px;left:8px;z-index:451">📅</button>
+
+<div class="app-body">
+  <div id="map"></div>
+</div>
+
+<!-- Hint para clic en mapa -->
+<div class="map-click-hint" id="clickHint">📍 Toca el mapa para colocar un punto de riesgo</div>
+
+<!-- FABs -->
+<div class="fab" id="fabButtons">
+  <button class="fab-btn fab-primary hidden" id="fabAddRisk" onclick="openAddRisk()" title="Agregar Riesgo">➕</button>
+  <button class="fab-btn fab-info" onclick="centerOnMe()" title="Mi posición">📍</button>
+  <button class="fab-btn fab-danger hidden" id="fabEndSession" onclick="endSession()" title="Finalizar sesión">⏹</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PANEL DE INICIO DE SESIÓN
+═══════════════════════════════════════════════════════ -->
+<div id="startPanel" class="monitor-form">
+  <h2 style="margin-bottom:4px">👁️ Iniciar Monitoreo</h2>
+  <p class="text-muted mb-2" style="font-size:.82rem">Configure la sesión antes de salir a ruta</p>
+
+  <!-- Tarjetas de Vehículo -->
+  <div class="form-group">
+    <label>🚌 Vehículo (opcional)</label>
+    <div id="selVehicleGrid" class="select-card-grid" style="margin-bottom:4px"></div>
+    <!-- input oculto para compatibilidad con startSession() -->
+    <input type="hidden" id="selVehicle" value="">
+  </div>
+
+  <!-- Tarjetas de Conductor -->
+  <div class="form-group">
+    <label>👤 Conductor (opcional)</label>
+    <div id="selDriverGrid" class="select-card-grid" style="margin-bottom:4px"></div>
+    <input type="hidden" id="selDriver" value="">
+  </div>
+
+  <div class="form-group">
+    <label>📍 Origen</label>
+    <input type="text" id="originName" class="form-control" placeholder="Ej: Terminal Norte">
+  </div>
+  <div class="form-group">
+    <label>🏁 Destino</label>
+    <input type="text" id="destName" class="form-control" placeholder="Ej: Centro">
+  </div>
+
+  <button class="btn btn-success btn-block btn-lg" onclick="startSession()">
+    🚀 Iniciar Sesión de Monitoreo
+  </button>
+</div>
+
+<!-- BADGE SESIÓN ACTIVA -->
+<div class="session-badge" id="sessionBadge">
+  <div style="font-size:1rem;font-weight:700">Sesión Activa 🟢</div>
+  <div style="font-size:.82rem;opacity:.9;margin-top:4px" id="sessionInfo"></div>
+  <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+    <span id="sessionTimer" style="font-size:1.1rem;font-weight:700">00:00</span>
+    <span style="opacity:.8">·</span>
+    <span id="pointsCount">0 puntos</span>
+  </div>
+</div>
+
+<!-- BOTTOM SHEET: Agregar riesgo -->
+<div class="bottom-sheet" id="addRiskSheet">
+  <div class="bottom-sheet-handle"></div>
+  <div class="add-risk-sheet">
+    <h3 style="margin-bottom:12px">⚠️ Nuevo Punto de Riesgo</h3>
+    <p class="text-muted mb-1" style="font-size:.85rem" id="coordsDisplay">Coordenadas: —</p>
+
+    <div class="risk-type-grid" id="riskTypeGrid"></div>
+
+    <div class="form-group">
+      <label>Descripción (opcional)</label>
+      <input type="text" id="riskDesc" class="form-control" placeholder="Detalle del riesgo...">
+    </div>
+    <div class="form-group">
+      <label>Severidad</label>
+      <select id="riskSeverity" class="form-control">
+        <option value="low">🟢 Bajo</option>
+        <option value="medium" selected>🟡 Medio</option>
+        <option value="high">🔴 Alto</option>
+        <option value="critical">🚨 Crítico</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>¿Es permanente?</label>
+      <select id="riskPermanent" class="form-control">
+        <option value="1">Sí — permanente en el sistema</option>
+        <option value="0">No — temporal</option>
+      </select>
+    </div>
+    <div class="d-flex gap-1">
+      <button class="btn btn-secondary flex-1" onclick="closeAddRisk()">Cancelar</button>
+      <button class="btn btn-danger flex-1" onclick="saveRiskPoint()">💾 Guardar Punto</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY RESUMEN -->
+<div class="summary-overlay" id="summaryOverlay">
+  <div class="summary-card">
+    <h2 style="margin-bottom:16px">📋 Resumen de Sesión</h2>
+    <div id="summaryContent"></div>
+    <button class="btn btn-primary btn-block mt-2" onclick="closeSummary()">Cerrar</button>
+  </div>
+</div>
+
+<!-- DRAWER SESIONES ANTERIORES -->
+<div class="drawer" id="sessionsDrawer">
+  <div class="drawer-header">
+    <span>📋 Sesiones de Monitoreo</span>
+    <button class="btn btn-icon btn-sm" onclick="toggleSessionList()" style="background:rgba(255,255,255,.2);color:#fff">✕</button>
+  </div>
+  <div class="drawer-body" id="sessionsDrawerBody">
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/sounds.js"></script>
+<script src="/js/monitor.js"></script>
+</body>
+</html>

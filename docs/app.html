@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Rutograma — Ruta</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .step-indicator { display:flex; gap:8px; margin-bottom:16px; }
+    .step { flex:1; height:4px; border-radius:2px; background:var(--border); }
+    .step.active { background:var(--primary); }
+    .step.done   { background:var(--success); }
+
+    .origin-pin { color:var(--success); font-size:1.3rem; }
+    .dest-pin   { color:var(--danger);  font-size:1.3rem; }
+
+    .pre-trip-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.6);
+      display:flex; align-items:center; justify-content:center; z-index:2000;
+    }
+    .pre-trip-card {
+      background:var(--surface); border-radius:var(--radius); padding:28px;
+      width:100%; max-width:440px; max-height:92vh; overflow-y:auto;
+      box-shadow:0 8px 40px rgba(0,0,0,.3);
+    }
+
+    .nearby-risk { padding:10px 0; border-bottom:1px solid var(--border); display:flex; gap:10px; align-items:center; }
+    .nearby-risk:last-child { border-bottom:none; }
+
+    .trip-hud {
+      position:fixed; top:var(--header-h); left:0; right:0; z-index:450;
+      background:linear-gradient(90deg,#1b5e20,#2e7d32);
+      color:#fff; padding:10px 16px; display:none; gap:16px; align-items:center; flex-wrap:wrap;
+    }
+    .trip-hud.active { display:flex; }
+    .hud-stat { text-align:center; }
+    .hud-val  { font-size:1.1rem; font-weight:700; }
+    .hud-lbl  { font-size:.7rem; opacity:.8; }
+
+    .waze-chip {
+      display:inline-flex; align-items:center; gap:4px; padding:4px 10px;
+      border-radius:16px; font-size:.78rem; font-weight:600;
+      background:#ffecb3; color:#f57f17; margin:3px;
+    }
+
+    #searchWrap { position:fixed; top:calc(var(--header-h)+8px); left:8px; right:8px; max-width:560px;
+      left:50%; transform:translateX(-50%); z-index:400; }
+    .search-row { display:flex; gap:8px; margin-bottom:6px; }
+    .search-input-wrap {
+      flex:1; background:var(--surface); border-radius:24px; padding:0 14px;
+      box-shadow:0 2px 10px rgba(0,0,0,.2); display:flex; align-items:center; gap:8px;
+    }
+    .search-input-wrap input { flex:1; border:none; outline:none; padding:13px 0; font-size:.95rem; background:transparent; }
+    .search-suggestions { position:absolute; top:100%; left:0; right:0; background:var(--surface);
+      border-radius:var(--radius-sm); box-shadow:0 4px 16px rgba(0,0,0,.2);
+      overflow:hidden; max-height:260px; overflow-y:auto; z-index:500; }
+
+    /* ── GPS Status bar ─────────────────────────── */
+    .gps-status-bar {
+      display:flex; align-items:center; gap:8px;
+      padding:10px 12px; border-radius:var(--radius-sm);
+      background:#e3f2fd; margin-bottom:14px; font-size:.85rem;
+    }
+    .gps-status-bar.ok  { background:#e8f5e9; }
+    .gps-status-bar.err { background:#fff3e0; }
+
+    /* ── Manual GPS fallback ─────────────────────── */
+    #manualGpsWrap { margin-bottom:14px; position:relative; }
+    #manualGpsWrap label { display:block; font-size:.83rem; font-weight:600; color:var(--text2); margin-bottom:6px; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <button class="btn btn-icon" onclick="toggleAppMenu()" title="Menú" style="font-size:1.1rem">☰</button>
+  <button class="btn btn-icon btn-danger" onclick="panicButton()" title="🚨 EMERGENCIA" style="background:#c62828;color:#fff;font-size:.9rem">🚨</button>
+  <span class="logo" id="appLogoWrap">
+    <img id="appLogo" src="" alt="Logo" style="height:28px;display:none;vertical-align:middle;margin-right:6px">
+    <span id="appLogoText">🗺️ Rutograma</span>
+  </span>
+  <span class="user-badge" id="userBadge"></span>
+  <button class="btn btn-icon" id="gpsStatusBtn" title="Estado GPS" style="font-size:.7rem;min-width:60px;border-radius:14px;padding:6px 10px">📡 GPS</button>
+  <button class="btn btn-icon" onclick="openRisksDrawer()" title="Puntos de riesgo">⚠️</button>
+  <button class="btn btn-icon" onclick="Auth.logout()" title="Cerrar sesión">🚪</button>
+</header>
+
+<!-- MENÚ LATERAL IZQUIERDO -->
+<div class="app-sidebar-overlay" id="appMenuOverlay" onclick="toggleAppMenu()"></div>
+<div class="app-sidebar" id="appMenu">
+  <div class="app-sidebar-header">
+    <img id="menuLogo" src="" alt="Logo" style="height:36px;display:none;margin-bottom:8px">
+    <div style="font-weight:700;font-size:1.1rem" id="menuTenantName">Rutograma</div>
+    <div style="font-size:.82rem;opacity:.8" id="menuUserName"></div>
+  </div>
+  <nav class="app-sidebar-nav">
+    <div class="nav-section-title">PRINCIPAL</div>
+    <div class="nav-item" onclick="location.href='/app'">
+      <span>🗺️</span> Nueva Ruta
+    </div>
+    <div class="nav-item" onclick="location.href='/monitor'">
+      <span>👁️</span> Monitoreo
+    </div>
+
+    <div class="nav-section-title">GESTIÓN</div>
+    <div class="nav-item" onclick="openVehicleModal()">
+      <span>🚌</span> Agregar Vehículo
+    </div>
+    <div class="nav-item" onclick="openDriverModal()">
+      <span>👤</span> Agregar Conductor
+    </div>
+    <div class="nav-item" onclick="enableAddRiskMode(); toggleAppMenu();">
+      <span>⚠️</span> Agregar Riesgo en Mapa
+    </div>
+    <div class="nav-item" onclick="location.href='/admin'">
+      <span>🏢</span> Panel Admin
+    </div>
+
+    <div class="nav-section-title">URGENCIA</div>
+    <div class="nav-item" onclick="openUrgencyModal()" style="background:#ffebee;border:1px solid #ffcdd2">
+      <span>🚨</span> Ver Números de Emergencia
+    </div>
+    <div class="nav-item" onclick="openPanicConfigModal()" style="border:1px solid var(--border)">
+      <span>⚙️</span> Configurar Pánico
+    </div>
+
+    <div class="nav-section-title">CUENTA</div>
+    <div class="nav-item" onclick="openChangePassModal()">
+      <span>🔑</span> Cambiar Contraseña
+    </div>
+    <div class="nav-item" onclick="document.getElementById('logoUpload').click(); toggleAppMenu();">
+      <span>🖼️</span> Subir Logo / Favicon
+    </div>
+    <input type="file" id="logoUpload" accept="image/*" style="display:none" onchange="uploadLogo(event)">
+    <div class="nav-item" onclick="Auth.logout()">
+      <span>🚪</span> Cerrar Sesión
+    </div>
+  </nav>
+</div>
+
+<!-- HUD DEL VIAJE ACTIVO -->
+<div class="trip-hud" id="tripHud">
+  <div class="hud-stat"><div class="hud-val" id="hudDist">—</div><div class="hud-lbl">Distancia</div></div>
+  <div class="hud-stat"><div class="hud-val" id="hudEta">—</div><div class="hud-lbl">Tiempo est.</div></div>
+  <div class="hud-stat"><div class="hud-val" id="hudSpeed">—</div><div class="hud-lbl">km/h</div></div>
+  <div style="flex:1"></div>
+  <button class="btn btn-danger btn-sm" onclick="endTrip()">⏹ Finalizar</button>
+</div>
+
+<!-- BARRA DE BÚSQUEDA (durante viaje) -->
+<div id="searchWrap" style="display:none">
+  <div class="search-row">
+    <div class="search-input-wrap" style="position:relative">
+      <span>📍</span>
+      <input id="destInput" type="text" placeholder="¿A dónde vas?" autocomplete="off">
+      <button class="btn btn-icon btn-sm" id="clearDest" onclick="clearDest()" style="display:none">✕</button>
+      <div class="search-suggestions" id="suggestions"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAPA -->
+<div class="app-body">
+  <div id="map"></div>
+</div>
+
+<!-- FABs -->
+  <div class="fab" id="fabBtns">
+    <button class="fab-btn fab-danger" onclick="panicButton()" title="🚨 EMERGENCIA" style="background:#c62828;font-size:1.2rem">🚨</button>
+    <button class="fab-btn fab-primary" onclick="openPreTrip()" title="Nueva ruta">🚀</button>
+    <button class="fab-btn fab-info" onclick="centerOnMe()" title="Mi ubicación">📍</button>
+  </div>
+
+  <!-- BOTÓN IA EVALUACIÓN -->
+  <button class="fab-ai" id="fabAi" onclick="toggleAiPanel()" title="🤖 Evaluación IA">🤖</button>
+
+  <!-- BOTÓN AGREGAR RIESGO EN MAPA -->
+  <button class="fab-btn fab-danger" id="fabRisk" onclick="enableAddRiskMode()" title="⚠️ Agregar Riesgo" style="background:#ff9800;color:#fff;font-size:1.1rem;position:fixed;bottom:140px;left:16px;z-index:500">⚠️</button>
+
+  <!-- PANEL IA EVALUACIÓN -->
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-panel-header">
+      <span>🤖 Evaluación de Ruta</span>
+      <button class="btn-close" onclick="toggleAiPanel()" style="color:#fff">✕</button>
+    </div>
+    <div class="ai-panel-body" id="aiPanelBody">
+      <div style="text-align:center;padding:20px;color:var(--text2)">
+        Calcula una ruta para ver la evaluación IA
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECTOR DE ESTILO DE MAPA -->
+  <div id="mapStyleSelector" style="position:fixed;bottom:130px;left:8px;z-index:450;background:var(--surface);border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.2);overflow:hidden;display:none">
+    <div style="padding:6px 10px;font-size:.75rem;font-weight:700;color:#888;border-bottom:1px solid #eee">ESTILO</div>
+    <div class="style-opt" onclick="switchMapStyle('openstreet')" data-style="openstreet">OSM</div>
+    <div class="style-opt" onclick="switchMapStyle('carto')" data-style="carto">Carto</div>
+    <div class="style-opt" onclick="switchMapStyle('satellite')" data-style="satellite">Satélite</div>
+  </div>
+  <button class="btn btn-icon" onclick="toggleMapStyleSelector()" title="Cambiar estilo" style="position:fixed;bottom:130px;left:60px;z-index:451;background:var(--surface);box-shadow:0 2px 8px rgba(0,0,0,.15)">🗺️</button>
+
+<!-- MODAL: AGREGAR VEHÍCULO -->
+<div class="modal-overlay" id="vehicleModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🚌 Nuevo Vehículo</h2>
+      <button class="btn-close" onclick="closeVehicleModal()">✕</button>
+    </div>
+    <div class="form-group"><label>Placa *</label><input type="text" id="vPlaca" class="form-control" placeholder="Ej: ABC123"></div>
+    <div class="form-group"><label>Tipo</label>
+      <select id="vType" class="form-control">
+        <option value="bus">Bus</option><option value="microbus">Microbús</option>
+        <option value="minibus">Minibús</option><option value="van">Van</option>
+        <option value="taxi">Taxi</option><option value="truck">Camión</option>
+        <option value="other">Otro</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Marca</label><input type="text" id="vBrand" class="form-control" placeholder="Ej: Mercedes"></div>
+      <div class="form-group"><label>Modelo</label><input type="text" id="vModel" class="form-control" placeholder="Ej: Sprinter"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Año</label><input type="number" id="vYear" class="form-control" placeholder="2020"></div>
+      <div class="form-group"><label>Capacidad</label><input type="number" id="vCapacity" class="form-control" placeholder="20"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeVehicleModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveVehicle()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AGREGAR CONDUCTOR -->
+<div class="modal-overlay" id="driverModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>👤 Nuevo Conductor</h2>
+      <button class="btn-close" onclick="closeDriverModal()">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Nombre *</label><input type="text" id="dName" class="form-control"></div>
+      <div class="form-group"><label>Licencia</label><input type="text" id="dLicense" class="form-control"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tipo Licencia</label><input type="text" id="dLicenseType" class="form-control" placeholder="A, B, C..."></div>
+      <div class="form-group"><label>Teléfono</label><input type="text" id="dPhone" class="form-control"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="dEmail" class="form-control"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDriverModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDriver()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CAMBIAR CONTRASEÑA -->
+<div class="modal-overlay" id="changePassModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🔑 Cambiar Contraseña</h2>
+      <button class="btn-close" onclick="closeChangePassModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Contraseña Actual *</label>
+      <input type="password" id="currentPass" class="form-control">
+    </div>
+    <div class="form-group">
+      <label>Nueva Contraseña *</label>
+      <input type="password" id="newPass" class="form-control" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="form-group">
+      <label>Confirmar Contraseña *</label>
+      <input type="password" id="confirmPass" class="form-control">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeChangePassModal()">Cancelar</button>
+      <button class="btn btn-warning" onclick="changePassword()">🔑 Cambiar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIGURAR PÁNICO -->
+<div class="modal-overlay" id="panicConfigModal">
+  <div class="modal">
+    <div class="modal-header" style="background:var(--danger);color:#fff">
+      <h2>🚨 Configurar Botón de Pánico</h2>
+      <button class="btn-close" onclick="closePanicConfigModal()" style="color:#fff">✕</button>
+    </div>
+    <div style="padding:16px">
+      <p style="font-size:.85rem;color:var(--text2);margin-bottom:12px">Ingresa hasta 3 números que recibirán el WhatsApp de emergencia:</p>
+      <div class="form-group">
+        <label>Número 1 *</label>
+        <input type="text" id="panicPhone1" class="form-control" placeholder="Ej: 974328000" maxlength="15">
+      </div>
+      <div class="form-group">
+        <label>Número 2</label>
+        <input type="text" id="panicPhone2" class="form-control" placeholder="Ej: 948340370" maxlength="15">
+      </div>
+      <div class="form-group">
+        <label>Número 3</label>
+        <input type="text" id="panicPhone3" class="form-control" placeholder="Opcional" maxlength="15">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePanicConfigModal()">Cancelar</button>
+        <button class="btn btn-danger" onclick="savePanicNumbers()">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTRAR RIESGO EN MAPA -->
+<div class="modal-overlay" id="addRiskModal">
+  <div class="modal">
+    <div class="modal-header" style="background:var(--danger);color:#fff">
+      <h2>⚠️ Registrar Riesgo en Mapa</h2>
+      <button class="btn-close" onclick="closeAddRiskModal()" style="color:#fff">✕</button>
+    </div>
+    <div style="padding:16px">
+      <div class="form-group">
+        <label>Tipo de Riesgo *</label>
+        <select id="riskTypeSelect" class="form-control">
+          <option value="school">🏫 Colegio</option>
+          <option value="animal_crossing">🐄 Cruce de Animales</option>
+          <option value="landslide">⛰️ Deslizamiento de Tierra</option>
+          <option value="accident">💥 Accidentes</option>
+          <option value="traffic">🚗 Tráfico</option>
+          <option value="curve">➰ Curva Peligrosa</option>
+          <option value="medical">🏥 Puesto Médico</option>
+          <option value="slope">📐 Pendiente</option>
+          <option value="fog">🌫️ Neblina</option>
+          <option value="other">✏️ Otro (especificar)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Nombre / Descripción *</label>
+        <input type="text" id="riskName" class="form-control" placeholder="Describa el riesgo">
+      </div>
+      <div class="form-group">
+        <label>Severidad *</label>
+        <select id="riskSeverity" class="form-control">
+          <option value="low">Baja</option>
+          <option value="medium" selected>Media</option>
+          <option value="high">Alta</option>
+          <option value="critical">Crítica</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAddRiskModal()">Cancelar</button>
+        <button class="btn btn-danger" onclick="saveRiskPoint()">💾 Guardar en Mapa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: URGENCIA / EMERGENCIA -->
+<div class="modal-overlay" id="urgencyModal">
+  <div class="modal modal-lg">
+    <div class="modal-header" style="background:var(--primary);color:#fff">
+      <h2>🚨 Urgencia / Emergencia</h2>
+      <button class="btn-close" onclick="closeUrgencyModal()" style="color:#fff">✕</button>
+    </div>
+    <div style="padding:16px">
+      <div style="font-weight:700;margin-bottom:12px;color:var(--danger)">🚨 Botón de Pánico - Enviar ubicación por WhatsApp</div>
+      <button class="btn btn-danger btn-block btn-lg" onclick="panicButton()" style="margin-bottom:16px;background:var(--danger);color:#fff">
+        🚨 ENVIAR EMERGENCIA POR WHATSAPP
+      </button>
+
+      <div style="font-weight:700;margin-bottom:12px;color:var(--text)">📞 Números de Auxilio</div>
+      <div id="urgencyList">
+        <div style="font-size:.78rem;font-weight:600;color:var(--text2);margin:6px 0">POLICÍA</div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>👮</span>105 Policía del Perú
+          <div style="margin-left:auto">
+            <button class="btn btn-sm btn-primary" onclick="callNow('105')">📞 Llamada</button>
+          </div>
+        </div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>👮</span>976 164 373 Policía Perú
+          <div style="margin-left:auto">
+            <button class="btn btn-sm btn-primary" onclick="callNow('976164373')">📞 Llamada</button>
+          </div>
+        </div>
+
+        <hr style="margin:12px 0;border-color:var(--border)">
+        <div style="font-size:.78rem;font-weight:600;color:var(--text2);margin:6px 0">BOMBEROS</div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🚒</span>106 Bomberos
+          <div style="margin-left:auto">
+            <button class="btn btn-sm btn-primary" onclick="callNow('106')">📞 Llamada</button>
+          </div>
+        </div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🚒</span>076 363 333 Bomberos Cajamarca
+          <div style="margin-left:auto">
+            <button class="btn btn-sm btn-primary" onclick="callNow('076363333')">📞 Llamada</button>
+          </div>
+        </div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🚒</span>930 393 959 Bomberos Cajamarca
+          <div style="margin-left:auto;display:flex;gap:4px">
+            <button class="btn btn-sm btn-success" onclick="sendWhatsApp('930393959')">💬 WhatsApp</button>
+            <button class="btn btn-sm btn-primary" onclick="callNow('930393959')">📞 Llamada</button>
+          </div>
+        </div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🚒</span>076 348 344 Bomberos Baños del Inca
+          <div style="margin-left:auto">
+            <button class="btn btn-sm btn-primary" onclick="callNow('076348344')">📞 Llamada</button>
+          </div>
+        </div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🚒</span>953 457 470 Bomberos Baños del Inca
+          <div style="margin-left:auto;display:flex;gap:4px">
+            <button class="btn btn-sm btn-success" onclick="sendWhatsApp('953457470')">💬 WhatsApp</button>
+            <button class="btn btn-sm btn-primary" onclick="callNow('953457470')">📞 Llamada</button>
+          </div>
+        </div>
+
+        <hr style="margin:12px 0;border-color:var(--border)">
+        <div style="font-size:.78rem;font-weight:600;color:var(--text2);margin:6px 0">SERENAZGO</div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🛡️</span>076 602 330 Serenazgo
+          <div style="margin-left:auto">
+            <button class="btn btn-sm btn-primary" onclick="callNow('076602330')">📞 Llamada</button>
+          </div>
+        </div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🛡️</span>948 542 364 Serenazgo
+          <div style="margin-left:auto;display:flex;gap:4px">
+            <button class="btn btn-sm btn-success" onclick="sendWhatsApp('948542364')">💬 WhatsApp</button>
+            <button class="btn btn-sm btn-primary" onclick="callNow('948542364')">📞 Llamada</button>
+          </div>
+        </div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🛡️</span>963 980 093 Serenazgo
+          <div style="margin-left:auto;display:flex;gap:4px">
+            <button class="btn btn-sm btn-success" onclick="sendWhatsApp('963980093')">💬 WhatsApp</button>
+            <button class="btn btn-sm btn-primary" onclick="callNow('963980093')">📞 Llamada</button>
+          </div>
+        </div>
+
+        <hr style="margin:12px 0;border-color:var(--border)">
+        <div style="font-size:.78rem;font-weight:600;color:var(--text2);margin:6px 0">SAMU / MINERA</div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>🚑</span>106 SAMU
+          <div style="margin-left:auto">
+            <button class="btn btn-sm btn-primary" onclick="callNow('106')">📞 Llamada</button>
+          </div>
+        </div>
+        <div class="emergency-item" style="border-radius:8px;padding:10px;margin-bottom:6px">
+          <span>⛏️</span>976 222 222 Central Emergencia Minera Yanacocha
+          <div style="margin-left:auto">
+            <button class="btn btn-sm btn-primary" onclick="callNow('976222222')">📞 Llamada</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     OVERLAY PRE-VIAJE
+═══════════════════════════════════════════════════════════ -->
+<div class="pre-trip-overlay hidden" id="preTripOverlay">
+  <div class="pre-trip-card">
+    <div class="step-indicator">
+      <div class="step active" id="s1"></div>
+      <div class="step" id="s2"></div>
+      <div class="step" id="s3"></div>
+    </div>
+
+    <!-- ── PASO 1: Vehículo y Conductor ── -->
+    <div id="step1">
+      <h2 style="margin-bottom:4px">🚌 Registrar Unidad</h2>
+      <p class="text-muted mb-2" style="font-size:.82rem">Seleccione el vehículo y el conductor que realizarán la ruta</p>
+
+      <!-- Estado GPS -->
+      <div class="gps-status-bar" id="gpsBarStep1">
+        <span id="gpsBarIcon">📡</span>
+        <span id="gpsBarText" style="flex:1">Obteniendo ubicación GPS...</span>
+        <button class="btn btn-sm btn-secondary" onclick="retryGps()" id="gpsRetryBtn" style="display:none">Reintentar</button>
+      </div>
+
+      <!-- Fallback manual de ubicación -->
+      <div id="manualGpsWrap" style="display:none">
+        <label>📌 Ingresar ubicación de origen manualmente</label>
+        <input type="text" id="manualGpsInput" class="form-control"
+          placeholder="Ej: Calle 100 con Cra 15, Bogotá"
+          oninput="searchManualSugg(this.value)"
+          autocomplete="off">
+        <div id="manualGpsSugg" class="search-suggestions" style="position:relative;max-height:180px"></div>
+        <button class="btn btn-primary btn-sm mt-1" onclick="setManualLocation()" style="width:100%">
+          📍 Establecer como origen
+        </button>
+      </div>
+
+      <!-- Tarjetas de Vehículo -->
+      <div class="form-group">
+        <label>🚌 Vehículo *</label>
+        <div id="vehicleGrid" class="select-card-grid"></div>
+      </div>
+
+      <!-- Tarjetas de Conductor -->
+      <div class="form-group">
+        <label>👤 Conductor *</label>
+        <div id="driverGrid" class="select-card-grid"></div>
+      </div>
+
+      <div class="d-flex gap-1 mt-2">
+        <button class="btn btn-secondary flex-1" onclick="closePreTrip()">Cancelar</button>
+        <button class="btn btn-primary flex-1" onclick="goStep2()">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- ── PASO 2: Destino ── -->
+    <div id="step2" class="hidden">
+      <h2 style="margin-bottom:4px">🗺️ Definir Ruta</h2>
+      <p class="text-muted mb-2" style="font-size:.82rem">Indique el destino para calcular la ruta</p>
+
+      <div class="form-group">
+        <label>📍 Origen (tu ubicación actual)</label>
+        <input type="text" id="originDisplay" class="form-control" readonly
+          style="background:#f5f5f5;color:var(--text2)" placeholder="Detectando ubicación...">
+      </div>
+
+      <div class="form-group" style="position:relative">
+        <label>🏁 Destino *</label>
+        <input type="text" id="destSearch2" class="form-control"
+          placeholder="Buscar destino..." autocomplete="off"
+          oninput="searchDest2(this.value)">
+        <div class="search-suggestions" id="sugg2" style="margin-top:2px"></div>
+      </div>
+
+      <div id="routeInfo" class="route-preview hidden">
+        <div class="route-stat">
+          <div class="stat-item"><div class="stat-val" id="riDist">—</div><div class="stat-label">Distancia</div></div>
+          <div class="stat-item"><div class="stat-val" id="riTime">—</div><div class="stat-label">Tiempo est.</div></div>
+        </div>
+      </div>
+
+      <!-- RUTAS ALTERNATIVAS -->
+      <div id="altRoutesWrap" class="hidden" style="margin-top:12px">
+        <div style="font-weight:600;font-size:.85rem;margin-bottom:8px">🛣️ Rutas Alternativas</div>
+        <div id="altRoutesList" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px"></div>
+      </div>
+
+      <div class="d-flex gap-1 mt-2">
+        <button class="btn btn-secondary flex-1" onclick="goStep1()">← Atrás</button>
+        <button class="btn btn-primary flex-1" id="btnCalculate" onclick="calculateRoute()" disabled>
+          📐 Calcular Ruta
+        </button>
+      </div>
+    </div>
+
+    <!-- ── PASO 3: Resumen de Riesgos ── -->
+    <div id="step3" class="hidden">
+      <h2 style="margin-bottom:4px">📋 Resumen de la Ruta</h2>
+      <p class="text-muted mb-2" style="font-size:.85rem">Riesgos y condiciones principales en tu recorrido</p>
+
+      <div id="weatherInfo"></div>
+      <div id="wazeAlertsInfo"></div>
+      <div id="riskSummary"></div>
+
+      <div class="d-flex gap-1 mt-3">
+        <button class="btn btn-secondary flex-1" onclick="goStep2()">← Atrás</button>
+        <button class="btn btn-success flex-1 btn-lg" onclick="startTrip()">🚀 INICIAR RUTA</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- DRAWER: Puntos de Riesgo -->
+<div class="drawer" id="risksDrawer">
+  <div class="drawer-header">
+    <span>⚠️ Puntos de Riesgo</span>
+    <button class="btn btn-icon btn-sm" onclick="closeRisksDrawer()" style="background:rgba(255,255,255,.2);color:#fff">✕</button>
+  </div>
+  <div class="drawer-body" id="risksDrawerBody">
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/sounds.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

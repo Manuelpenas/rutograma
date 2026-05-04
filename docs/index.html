@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rutograma — Acceso</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .login-footer { text-align: center; margin-top: 24px; color: var(--text2); font-size: .82rem; }
+    .login-footer a { color: var(--primary); text-decoration: none; }
+    .error-msg { background: #ffebee; color: #c62828; padding: 10px 14px; border-radius: 8px; font-size: .88rem; margin-bottom: 16px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-logo">
+        <h1>🗺️ Rutograma</h1>
+        <p>Sistema de Seguridad Vial Inteligente</p>
+      </div>
+
+      <div id="errorMsg" class="error-msg"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Correo electrónico</label>
+          <input type="email" id="email" class="form-control" placeholder="usuario@empresa.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+        </div>
+        <button type="submit" id="submitBtn" class="btn btn-primary btn-block btn-lg">
+          Ingresar
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <p>¿Problemas de acceso? Contacte al administrador del sistema.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Redirigir si ya hay sesión
+    const token = localStorage.getItem('rg_token');
+    const user  = (() => { try { return JSON.parse(localStorage.getItem('rg_user')); } catch { return null; } })();
+    if (token && user) {
+      if (user.role === 'superadmin') location.href = '/admin';
+      else if (user.role === 'monitor') location.href = '/monitor';
+      else location.href = '/app';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const err = document.getElementById('errorMsg');
+      btn.textContent = 'Ingresando...'; btn.disabled = true;
+      err.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión.');
+
+        localStorage.setItem('rg_token', data.token);
+        localStorage.setItem('rg_user', JSON.stringify(data.user));
+
+        if (data.user.role === 'superadmin') location.href = '/admin';
+        else if (data.user.role === 'monitor') location.href = '/monitor';
+        else location.href = '/app';
+
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.style.display = 'block';
+        btn.textContent = 'Ingresar'; btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
