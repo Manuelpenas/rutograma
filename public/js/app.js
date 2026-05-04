@@ -1,5 +1,5 @@
-﻿/**
- * app.js — Lógica principal de la aplicación de rutograma
+/**
+ * app.js ? L?gica principal de la aplicaci?n de rutograma
  */
 
 const State = {
@@ -21,7 +21,7 @@ const State = {
   step: 1
 };
 
-// ── Inicialización ─────────────────────────────────────────────────────────
+// ?? Inicializaci?n ?????????????????????????????????????????????????????????
 window.addEventListener('DOMContentLoaded', async () => {
   const user = Auth.check();
   if (!user) return;
@@ -34,10 +34,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 
 
-// ── GPS ────────────────────────────────────────────────────────────────────
+// ?? GPS ????????????????????????????????????????????????????????????????????
 function getCurrentPosition() {
   const gpsBtn = document.getElementById('gpsStatusBtn');
-  if (gpsBtn) gpsBtn.textContent = '📡 Buscando GPS...';
+  if (gpsBtn) gpsBtn.textContent = '?? Buscando GPS...';
 
   if (!navigator.geolocation) {
     showToast('GPS no disponible en este dispositivo.', 'warning');
@@ -62,7 +62,7 @@ function onGpsSuccess(pos) {
   State.map.setView([State.userLat, State.userLng], 15);
 
   const btn = document.getElementById('gpsStatusBtn');
-  if (btn) { btn.textContent = '📍 GPS Activo'; btn.style.background = 'var(--success)'; }
+  if (btn) { btn.textContent = '?? GPS Activo'; btn.style.background = 'var(--success)'; }
 
   reverseGeocode(State.userLat, State.userLng);
   loadNearbyRisks(State.userLat, State.userLng);
@@ -71,15 +71,15 @@ function onGpsSuccess(pos) {
 
 function onGpsError(err) {
   const msgs = {
-    1: '⚠️ Permiso de GPS denegado. Active la ubicación en su navegador.',
-    2: '⚠️ No se pudo determinar la ubicación.',
-    3: '⚠️ Tiempo de espera del GPS agotado.'
+    1: '?? Permiso de GPS denegado. Active la ubicaci?n en su navegador.',
+    2: '?? No se pudo determinar la ubicaci?n.',
+    3: '?? Tiempo de espera del GPS agotado.'
   };
-  const msg = msgs[err.code] || '⚠️ Error al obtener GPS.';
+  const msg = msgs[err.code] || '?? Error al obtener GPS.';
   showToast(msg, 'warning', 5000);
 
   const btn = document.getElementById('gpsStatusBtn');
-  if (btn) { btn.textContent = '⚠️ Sin GPS'; btn.style.background = 'var(--warning)'; btn.style.color = '#333'; }
+  if (btn) { btn.textContent = '?? Sin GPS'; btn.style.background = 'var(--warning)'; btn.style.color = '#333'; }
   showManualLocationOption();
 }
 
@@ -92,11 +92,11 @@ function retryGps() {
   const wrap = document.getElementById('manualGpsWrap');
   if (wrap) wrap.style.display = 'none';
   const btn = document.getElementById('gpsStatusBtn');
-  if (btn) { btn.textContent = '📡 GPS...'; btn.style.background = ''; btn.style.color = ''; }
+  if (btn) { btn.textContent = '?? GPS...'; btn.style.background = ''; btn.style.color = ''; }
   getCurrentPosition();
 }
 
-// Búsqueda de sugerencias para el input manual (debounced)
+// B?squeda de sugerencias para el input manual (debounced)
 let manualSuggTimer = null;
 function searchManualSugg(q) {
   clearTimeout(manualSuggTimer);
@@ -104,13 +104,13 @@ function searchManualSugg(q) {
   if (!box) return;
   if (q.length < 3) { box.innerHTML = ''; return; }
   manualSuggTimer = setTimeout(async () => {
-    box.innerHTML = '<div class="suggestion-item text-muted">🔍 Buscando...</div>';
+    box.innerHTML = '<div class="suggestion-item text-muted">?? Buscando...</div>';
     try {
       const results = await api(`/external/geocode?q=${encodeURIComponent(q)}`);
       if (!results.length) { box.innerHTML = '<div class="suggestion-item text-muted">Sin resultados</div>'; return; }
       box.innerHTML = results.slice(0, 5).map(r => `
         <div class="suggestion-item" onclick="pickManualSugg(${r.lat},${r.lon},'${escHtml(r.display_name)}')">
-          <span class="suggestion-icon">📍</span>
+          <span class="suggestion-icon">??</span>
           <span style="font-size:.85rem">${r.display_name}</span>
         </div>`).join('');
     } catch { box.innerHTML = ''; }
@@ -132,7 +132,7 @@ function pickManualSugg(lat, lon, name) {
   document.getElementById('manualGpsWrap').style.display = 'none';
   loadNearbyRisks(State.userLat, State.userLng);
   fetchWeather(State.userLat, State.userLng);
-  showToast('📍 Origen: ' + State.originName, 'info', 2500);
+  showToast('?? Origen: ' + State.originName, 'info', 2500);
 }
 
 function setManualLocation() {
@@ -158,11 +158,11 @@ async function searchAndSetOrigin(q) {
       document.getElementById('manualGpsWrap').style.display = 'none';
       loadNearbyRisks(State.userLat, State.userLng);
       fetchWeather(State.userLat, State.userLng);
-      showToast('Ubicación establecida: ' + State.originName, 'info');
+      showToast('Ubicaci?n establecida: ' + State.originName, 'info');
     } else {
-      showToast('No se encontró esa ubicación.', 'warning');
+      showToast('No se encontr? esa ubicaci?n.', 'warning');
     }
-  } catch (e) { showToast('Error al buscar ubicación.', 'warning'); }
+  } catch (e) { showToast('Error al buscar ubicaci?n.', 'warning'); }
 }
 
 function placeUserMarker(lat, lng) {
@@ -179,13 +179,13 @@ function placeUserMarker(lat, lng) {
 async function reverseGeocode(lat, lng) {
   try {
     const data = await api(`/external/geocode?lat=${lat}&lng=${lng}`);
-    State.originName = data.display_name?.split(',').slice(0, 2).join(',') || 'Mi ubicación';
+    State.originName = data.display_name?.split(',').slice(0, 2).join(',') || 'Mi ubicaci?n';
     const el = document.getElementById('originDisplay');
     if (el) el.value = State.originName;
   } catch {}
 }
 
-// ── Viaje activo ─────────────────────────────────────────────────────────
+// ?? Viaje activo ?????????????????????????????????????????????????????????
 async function loadActiveTrip() {
   try {
     const trip = await api('/trips/active');
@@ -198,9 +198,9 @@ async function loadActiveTrip() {
   } catch {}
 }
 
-// ── Pre-viaje ─────────────────────────────────────────────────────────────
+// ?? Pre-viaje ?????????????????????????????????????????????????????????????
 async function openPreTrip() {
-  if (State.activeTrip) { showToast('Ya hay un viaje activo. Finalícelo primero.', 'warning'); return; }
+  if (State.activeTrip) { showToast('Ya hay un viaje activo. Final?celo primero.', 'warning'); return; }
   document.getElementById('preTripOverlay').classList.remove('hidden');
   goStep1();
   await loadVehiclesAndDrivers();
@@ -215,7 +215,7 @@ async function loadVehiclesAndDrivers() {
     [State.vehicles, State.drivers] = await Promise.all([api('/vehicles'), api('/drivers')]);
     renderVehicleCards();
     renderDriverCards();
-  } catch (e) { showToast('Error cargando flota. Verifique la conexión.'); }
+  } catch (e) { showToast('Error cargando flota. Verifique la conexi?n.'); }
 }
 
 function renderVehicleCards() {
@@ -223,13 +223,13 @@ function renderVehicleCards() {
   if (!grid) return;
   if (!State.vehicles.length) {
     grid.innerHTML = `<p class="text-muted text-center" style="grid-column:1/-1">
-      No hay vehículos registrados. <a href="/admin" style="color:var(--primary)">Registrar vehículo</a>
+      No hay veh?culos registrados. <a href="/admin" style="color:var(--primary)">Registrar veh?culo</a>
     </p>`;
     return;
   }
   grid.innerHTML = State.vehicles.map(v => `
     <div class="select-card" id="vc-${v.id}" onclick="selectVehicle('${v.id}')">
-      <div class="sc-icon">🚌</div>
+      <div class="sc-icon">??</div>
       <div class="sc-label">${v.plate}</div>
       <div class="sc-sub">${[v.brand, v.model].filter(Boolean).join(' ') || v.type}</div>
     </div>`).join('');
@@ -246,7 +246,7 @@ function renderDriverCards() {
   }
   grid.innerHTML = State.drivers.map(d => `
     <div class="select-card" id="dc-${d.id}" onclick="selectDriver('${d.id}')">
-      <div class="sc-icon">👤</div>
+      <div class="sc-icon">??</div>
       <div class="sc-label">${d.name}</div>
       <div class="sc-sub">${d.license_number || 'Sin licencia registrada'}</div>
     </div>`).join('');
@@ -272,13 +272,13 @@ function goStep1() {
 
 function goStep2() {
   if (State.step === 1) {
-    if (!State.selVehicleId) { showToast('Seleccione un vehículo.', 'warning'); return; }
+    if (!State.selVehicleId) { showToast('Seleccione un veh?culo.', 'warning'); return; }
     if (!State.selDriverId)  { showToast('Seleccione un conductor.', 'warning'); return; }
   }
   State.step = 2;
   hide('step1'); show('step2'); hide('step3');
   const el = document.getElementById('originDisplay');
-  if (el) el.value = State.originName || 'Obteniendo ubicación...';
+  if (el) el.value = State.originName || 'Obteniendo ubicaci?n...';
   updateStepIndicator();
 }
 
@@ -290,7 +290,7 @@ function updateStepIndicator() {
   }
 }
 
-// ── Búsqueda de destino ───────────────────────────────────────────────────
+// ?? B?squeda de destino ???????????????????????????????????????????????????
 let sugg2Timer = null;
 function searchDest2(q) {
   clearTimeout(sugg2Timer);
@@ -300,13 +300,13 @@ function searchDest2(q) {
   if (q.length < 3) { box.innerHTML = ''; return; }
 
   sugg2Timer = setTimeout(async () => {
-    box.innerHTML = '<div class="suggestion-item text-muted">🔍 Buscando...</div>';
+    box.innerHTML = '<div class="suggestion-item text-muted">?? Buscando...</div>';
     try {
       const results = await api(`/external/geocode?q=${encodeURIComponent(q)}`);
       if (!results.length) { box.innerHTML = '<div class="suggestion-item text-muted">Sin resultados</div>'; return; }
       box.innerHTML = results.map(r => `
         <div class="suggestion-item" onclick="selectDest2(${r.lat},${r.lon},'${escHtml(r.display_name)}')">
-          <span class="suggestion-icon">📍</span>
+          <span class="suggestion-icon">??</span>
           <span>${r.display_name}</span>
         </div>`).join('');
     } catch { box.innerHTML = '<div class="suggestion-item text-muted">Error al buscar</div>'; }
@@ -330,17 +330,17 @@ function selectDest2(lat, lng, name) {
     iconSize: [28, 28], iconAnchor: [14, 28]
   });
   State.destMarker = L.marker([State.destLat, State.destLng], { icon: dIcon })
-    .bindPopup(`<b>🏁 Destino:</b><br>${State.destName}`)
+    .bindPopup(`<b>?? Destino:</b><br>${State.destName}`)
     .addTo(State.map);
   State.map.panTo([State.destLat, State.destLng]);
 }
 
 async function calculateRoute() {
-  if (!State.originLat)  { showToast('No se detectó su ubicación de origen.', 'warning'); return; }
+  if (!State.originLat)  { showToast('No se detect? su ubicaci?n de origen.', 'warning'); return; }
   if (!State.destLat)    { showToast('Seleccione un destino de la lista.', 'warning'); return; }
 
   const btn = document.getElementById('btnCalculate');
-  btn.textContent = '⏳ Calculando...'; btn.disabled = true;
+  btn.textContent = '? Calculando...'; btn.disabled = true;
 
   try {
     const data = await api(`/external/route?from_lat=${State.originLat}&from_lng=${State.originLng}&to_lat=${State.destLat}&to_lng=${State.destLng}`);
@@ -355,12 +355,12 @@ async function calculateRoute() {
     showAlternativeRoutes();
     displayRoute(0);
 
-    btn.textContent = '✅ Ruta calculada';
+    btn.textContent = '? Ruta calculada';
     showToast('Ruta calculada correctamente.', 'info', 2000);
     setTimeout(() => goStep3(), 800);
   } catch (e) {
     showToast(e.message || 'Error al calcular la ruta.', 'warning');
-    btn.textContent = '🔄 Calcular Ruta'; btn.disabled = false;
+    btn.textContent = '?? Calcular Ruta'; btn.disabled = false;
   }
 }
 
@@ -388,33 +388,33 @@ async function buildRiskSummary() {
   document.getElementById('summaryLoading').style.display = 'none';
   document.getElementById('summaryContent').style.display = 'block';
 
-  // ── Clima ──────────────────────────────────────────────────────────────
+  // ?? Clima ??????????????????????????????????????????????????????????????
   const wEl = document.getElementById('weatherInfo');
   if (weatherData.status === 'fulfilled') {
     const w = weatherData.value;
     const id = w.weather_id || 0;
     let alertBadge = '';
-    if (id >= 200 && id < 300) alertBadge = `<span class="risk-chip high">⚡ Tormenta eléctrica — conduzca con precaución</span>`;
-    else if (id >= 300 && id < 600) alertBadge = `<span class="risk-chip medium">🌧️ Lluvia — visibilidad reducida</span>`;
-    else if (id >= 700 && id < 760) alertBadge = `<span class="risk-chip high">🌫️ Niebla — reduzca velocidad</span>`;
-    else if (id >= 600 && id < 700) alertBadge = `<span class="risk-chip critical">❄️ Nieve/hielo en vía — peligro</span>`;
+    if (id >= 200 && id < 300) alertBadge = `<span class="risk-chip high">? Tormenta el?ctrica ? conduzca con precauci?n</span>`;
+    else if (id >= 300 && id < 600) alertBadge = `<span class="risk-chip medium">??? Lluvia ? visibilidad reducida</span>`;
+    else if (id >= 700 && id < 760) alertBadge = `<span class="risk-chip high">??? Niebla ? reduzca velocidad</span>`;
+    else if (id >= 600 && id < 700) alertBadge = `<span class="risk-chip critical">?? Nieve/hielo en v?a ? peligro</span>`;
     wEl.innerHTML = `
       <div class="weather-widget">
         <img src="https://openweathermap.org/img/wn/${w.icon}@2x.png" width="52" height="52" alt="clima">
         <div style="flex:1">
-          <div class="temp">${Math.round(w.temp)}°C</div>
-          <div class="desc">${capitalize(w.description)} · ${w.city}</div>
+          <div class="temp">${Math.round(w.temp)}?C</div>
+          <div class="desc">${capitalize(w.description)} ? ${w.city}</div>
           ${alertBadge}
         </div>
         <div style="font-size:.82rem;opacity:.9;text-align:right;line-height:1.8">
-          💧 Humedad: ${w.humidity}%<br>💨 Viento: ${w.wind_speed} m/s<br>👁️ Visib: ${(w.visibility/1000).toFixed(1)} km
+          ?? Humedad: ${w.humidity}%<br>?? Viento: ${w.wind_speed} m/s<br>??? Visib: ${(w.visibility/1000).toFixed(1)} km
         </div>
       </div>`;
   } else {
-    wEl.innerHTML = `<div class="card text-muted" style="font-size:.85rem">⚠️ No se pudo obtener el clima. Configure su API key de OpenWeatherMap en el panel admin.</div>`;
+    wEl.innerHTML = `<div class="card text-muted" style="font-size:.85rem">?? No se pudo obtener el clima. Configure su API key de OpenWeatherMap en el panel admin.</div>`;
   }
 
-  // ── Alertas Waze ──────────────────────────────────────────────────────
+  // ?? Alertas Waze ??????????????????????????????????????????????????????
   const wazEl = document.getElementById('wazeAlertsInfo');
   if (wData.status === 'fulfilled' && wData.value.alerts?.length) {
     const alerts = wData.value.alerts.slice(0, 8);
@@ -425,7 +425,7 @@ async function buildRiskSummary() {
     });
     wazEl.innerHTML = `
       <div class="card mb-1">
-        <div class="card-title">🔴 Alertas de Tráfico en Tiempo Real (Waze)</div>
+        <div class="card-title">?? Alertas de Tr?fico en Tiempo Real (Waze)</div>
         ${Object.entries(grouped).map(([type, cnt]) => {
           const rc = getRiskConfig(type);
           return `<span class="waze-chip">${rc.icon} ${rc.label} <strong>(${cnt})</strong></span>`;
@@ -433,7 +433,7 @@ async function buildRiskSummary() {
       </div>`;
   } else { wazEl.innerHTML = ''; }
 
-  // ── Puntos del sistema ────────────────────────────────────────────────
+  // ?? Puntos del sistema ????????????????????????????????????????????????
   const rsEl = document.getElementById('riskSummary');
   const ownRisks = risksData.status === 'fulfilled' ? risksData.value : [];
   const osmPois  = osmData.status  === 'fulfilled' ? osmData.value  : [];
@@ -446,7 +446,7 @@ async function buildRiskSummary() {
     });
     rsEl.innerHTML = `
       <div class="card">
-        <div class="card-title">⚠️ Puntos de Riesgo en la Ruta (${sorted.length})</div>
+        <div class="card-title">?? Puntos de Riesgo en la Ruta (${sorted.length})</div>
         ${sorted.slice(0, 10).map(r => {
           const rc = getRiskConfig(r.type);
           const sc = getSeverityConfig(r.severity);
@@ -463,17 +463,17 @@ async function buildRiskSummary() {
             </div>
           </div>`;
         }).join('')}
-        ${sorted.length > 10 ? `<p class="text-muted text-center mt-1" style="font-size:.8rem">...y ${sorted.length - 10} más en la ruta</p>` : ''}
+        ${sorted.length > 10 ? `<p class="text-muted text-center mt-1" style="font-size:.8rem">...y ${sorted.length - 10} m?s en la ruta</p>` : ''}
       </div>`;
   } else {
-    rsEl.innerHTML = `<div class="card text-muted text-center">✅ No se encontraron puntos de riesgo registrados en esta área.</div>`;
+    rsEl.innerHTML = `<div class="card text-muted text-center">? No se encontraron puntos de riesgo registrados en esta ?rea.</div>`;
   }
 }
 
-// ── Iniciar viaje ─────────────────────────────────────────────────────────
+// ?? Iniciar viaje ?????????????????????????????????????????????????????????
 async function startTrip() {
   const btn = document.querySelector('#step3 .btn-success');
-  btn.textContent = '⏳ Iniciando...'; btn.disabled = true;
+  btn.textContent = '? Iniciando...'; btn.disabled = true;
 
   try {
     const trip = await api('/trips', {
@@ -506,22 +506,22 @@ async function startTrip() {
     startTracking();
     document.getElementById('fabBtns').style.display = 'none';
     SoundAlert.beepShort();
-    showToast('🚀 ¡Ruta iniciada! Conduzca con precaución.', 'info', 4000);
+    showToast('?? ?Ruta iniciada! Conduzca con precauci?n.', 'info', 4000);
   } catch (e) {
     showToast(e.message);
-    btn.textContent = '🚀 INICIAR RUTA'; btn.disabled = false;
+    btn.textContent = '?? INICIAR RUTA'; btn.disabled = false;
   }
 }
 
-// ── HUD viaje activo ──────────────────────────────────────────────────────
+// ?? HUD viaje activo ??????????????????????????????????????????????????????
 function showTripHUD(trip) {
   document.getElementById('tripHud').classList.add('active');
   document.getElementById('hudDist').textContent = fmtDistance(trip.distance_km);
   document.getElementById('hudEta').textContent  = fmtDuration(trip.estimated_duration);
-  document.getElementById('hudDest').textContent = trip.destination_name || '—';
+  document.getElementById('hudDest').textContent = trip.destination_name || '?';
 }
 
-// ── Tracking GPS ──────────────────────────────────────────────────────────
+// ?? Tracking GPS ??????????????????????????????????????????????????????????
 function startTracking() {
   if (State.watchId) navigator.geolocation.clearWatch(State.watchId);
   if (!navigator.geolocation) return;
@@ -543,7 +543,7 @@ function startTracking() {
      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 });
 }
 
-// ── Verificar riesgos cercanos ────────────────────────────────────────────
+// ?? Verificar riesgos cercanos ????????????????????????????????????????????
 async function checkNearbyRisks(lat, lng) {
   try {
     const risks = await api(`/riskpoints/nearby?lat=${lat}&lng=${lng}&radius_km=0.6&active_only=1`);
@@ -557,8 +557,8 @@ async function checkNearbyRisks(lat, lng) {
       const sc = getSeverityConfig(r.severity);
       SoundAlert.alertForRisk(r.type, r.severity, distM);
 
-      const emojis = { low: '🟡', medium: '🟠', high: '🔴', critical: '🚨' };
-      showToast(`${emojis[r.severity] || '⚠️'} ${rc.label} a ${Math.round(distM)} m — ${sc.label}`, 'danger', 4500);
+      const emojis = { low: '??', medium: '??', high: '??', critical: '??' };
+      showToast(`${emojis[r.severity] || '??'} ${rc.label} a ${Math.round(distM)} m ? ${sc.label}`, 'danger', 4500);
 
       api(`/trips/${State.activeTrip.id}/alert`, {
         method: 'POST',
@@ -569,10 +569,10 @@ async function checkNearbyRisks(lat, lng) {
   } catch {}
 }
 
-// ── Finalizar viaje ───────────────────────────────────────────────────────
+// ?? Finalizar viaje ???????????????????????????????????????????????????????
 async function endTrip() {
   if (!State.activeTrip) return;
-  if (!confirm('¿Desea finalizar el viaje y ver el resumen?')) return;
+  if (!confirm('?Desea finalizar el viaje y ver el resumen?')) return;
 
   try {
     const summary = await api(`/trips/${State.activeTrip.id}/complete`, { method: 'POST' });
@@ -594,8 +594,8 @@ function showSummaryModal(summary) {
   const html = `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px">
       <div style="background:#fff;border-radius:16px;padding:24px;max-width:440px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)">
-        <h2 style="margin-bottom:4px">✅ Viaje Completado</h2>
-        <p class="text-muted mb-2" style="font-size:.85rem">${summary.trip?.origin_name || ''} → ${summary.trip?.destination_name || ''}</p>
+        <h2 style="margin-bottom:4px">? Viaje Completado</h2>
+        <p class="text-muted mb-2" style="font-size:.85rem">${summary.trip?.origin_name || ''} ? ${summary.trip?.destination_name || ''}</p>
         <div class="route-preview">
           <div class="route-stat">
             <div class="stat-item"><div class="stat-val">${fmtDistance(summary.trip?.distance_km)}</div><div class="stat-label">Distancia</div></div>
@@ -604,7 +604,7 @@ function showSummaryModal(summary) {
           </div>
         </div>
         ${alerts.length ? `
-          <p style="font-weight:700;margin:12px 0 8px">📋 Alertas registradas:</p>
+          <p style="font-weight:700;margin:12px 0 8px">?? Alertas registradas:</p>
           ${alerts.slice(0, 8).map(a => {
             const rc = getRiskConfig(a.alert_type);
             const sc = getSeverityConfig(a.severity);
@@ -612,18 +612,18 @@ function showSummaryModal(summary) {
               <span style="font-size:1.4rem">${rc.icon}</span>
               <div>
                 <div style="font-weight:600">${rc.label}</div>
-                <div style="font-size:.78rem;color:var(--text2)">${fmtDatetime(a.triggered_at)} · <span style="color:${sc.color}">${sc.label}</span></div>
+                <div style="font-size:.78rem;color:var(--text2)">${fmtDatetime(a.triggered_at)} ? <span style="color:${sc.color}">${sc.label}</span></div>
               </div>
             </div>`;
           }).join('')}
-        ` : '<p class="text-muted text-center mt-1">✅ Sin alertas en este recorrido.</p>'}
+        ` : '<p class="text-muted text-center mt-1">? Sin alertas en este recorrido.</p>'}
         <button class="btn btn-primary btn-block mt-2" onclick="this.closest('div[style*=inset]').remove()">Cerrar</button>
       </div>
     </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-// ── Mapa ──────────────────────────────────────────────────────────────────
+// ?? Mapa ??????????????????????????????????????????????????????????????????
 function centerOnMe() {
   if (State.userLat) State.map.setView([State.userLat, State.userLng], 16);
   else { showToast('GPS no disponible.', 'warning'); getCurrentPosition(); }
@@ -653,7 +653,7 @@ async function openRisksDrawer() {
         <div class="risk-icon-badge ${r.severity}">${rc.icon}</div>
         <div class="flex-1">
           <div style="font-weight:700">${rc.label}</div>
-          <div style="font-size:.8rem;color:var(--text2)">${r.description || '—'}</div>
+          <div style="font-size:.8rem;color:var(--text2)">${r.description || '?'}</div>
           <div style="margin-top:4px">
             <span class="badge badge-${r.severity==='low'?'success':r.severity==='medium'?'warning':'danger'}">${sc.label}</span>
             ${r.distance_km ? `<span class="badge badge-primary" style="margin-left:4px">${Math.round(r.distance_km*1000)} m</span>` : ''}
@@ -693,19 +693,19 @@ async function fetchWeather(lat, lng) {
     if ((id >= 200 && id < 600) || (id >= 700 && id < 760)) {
       const type = id >= 700 ? 'weather_fog' : id >= 500 ? 'weather_rain' : 'weather_rain';
       L.marker([lat + 0.001, lng], { icon: createRiskIcon(type, 'high') })
-        .bindPopup(`<b>${getRiskConfig(type).icon} ${w.description}</b><br>${Math.round(w.temp)}°C · ${w.city}`)
+        .bindPopup(`<b>${getRiskConfig(type).icon} ${w.description}</b><br>${Math.round(w.temp)}?C ? ${w.city}`)
         .addTo(State.map);
     }
   } catch {}
 }
 
-// ── Utilidades UI ─────────────────────────────────────────────────────────
+// ?? Utilidades UI ?????????????????????????????????????????????????????????
 function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
 function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
 function escHtml(s) { return String(s).replace(/'/g,"&#39;").replace(/"/g,"&quot;"); }
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
-// ── Rutas alternativas ──────────────────────────────────────────────────────
+// ?? Rutas alternativas ??????????????????????????????????????????????????????
 function showAlternativeRoutes() {
   const wrap = document.getElementById('altRoutesWrap');
   const list = document.getElementById('altRoutesList');
@@ -726,7 +726,7 @@ function showAlternativeRoutes() {
                 flex-shrink:0">
       <div style="font-weight:700;font-size:.85rem">Ruta ${idx + 1}</div>
       <div style="font-size:.78rem;color:#666;margin-top:4px">
-        ${fmtDistance(route.distance_km)} · ${fmtDuration(route.duration_min)}
+        ${fmtDistance(route.distance_km)} ? ${fmtDuration(route.duration_min)}
       </div>
       ${idx === 0 ? '<div style="font-size:.7rem;color:var(--primary);font-weight:600">RECOMENDADA</div>' : ''}
     </div>
@@ -759,22 +759,22 @@ function displayRoute(idx) {
   document.getElementById('riTime').textContent = fmtDuration(route.duration_min);
 }
 
-// ── Cambio de estilo de mapa ─────────────────────────────────────────────
+// ?? Cambio de estilo de mapa ?????????????????????????????????????????????
 const MAP_STYLES = {
   openstreet: {
     name: 'OpenStreetMap',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    options: { attribution: '© OpenStreetMap', maxZoom: 19 }
+    options: { attribution: '? OpenStreetMap', maxZoom: 19 }
   },
   carto: {
     name: 'CartoDB Voyager',
     url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    options: { attribution: '© OSM © CARTO', subdomains: 'abcd', maxZoom: 19 }
+    options: { attribution: '? OSM ? CARTO', subdomains: 'abcd', maxZoom: 19 }
   },
   satellite: {
-    name: 'Google Satélite',
+    name: 'Google Sat?lite',
     url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-    options: { attribution: '© Google', maxZoom: 20 }
+    options: { attribution: '? Google', maxZoom: 20 }
   }
 };
 
@@ -783,9 +783,9 @@ let currentTileLayer = null;
 function initMap() {
   State.map = L.map('map', { zoomControl: false }).setView([4.6097, -74.0817], 13);
 
-  // CartoDB Voyager — 100% gratuito, sin restricción de Referer
+  // CartoDB Voyager ? 100% gratuito, sin restricci?n de Referer
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+    attribution: '? <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ? <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: 'abcd',
     maxZoom: 19
   }).addTo(State.map);
@@ -828,7 +828,7 @@ function loadMapStylePreference() {
   if (saved && MAP_STYLES[saved]) switchMapStyle(saved);
 }
 
-// ── Menú lateral app ──────────────────────────────────────────────────────
+// ?? Men? lateral app ??????????????????????????????????????????????????????
 function toggleAppMenu() {
   const menu = document.getElementById('appMenu');
   const overlay = document.getElementById('appMenuOverlay');
@@ -868,15 +868,15 @@ async function saveVehicle() {
     year:       parseInt(document.getElementById('vYear')?.value) || null,
     capacity:   parseInt(document.getElementById('vCapacity')?.value) || null,
   };
-  console.log('Enviando vehículo:', body);
+  console.log('Enviando veh?culo:', body);
   if (!body.plate) { showToast('La placa es requerida.', 'warning'); return; }
   try {
     const result = await api('/vehicles', { method:'POST', body });
-    console.log('Vehículo creado:', result);
+    console.log('Veh?culo creado:', result);
     closeVehicleModal();
-    showToast('🚌 Vehículo registrado.', 'info');
+    showToast('?? Veh?culo registrado.', 'info');
   } catch (e) { 
-    console.error('Error al guardar vehículo:', e);
+    console.error('Error al guardar veh?culo:', e);
     showToast(e.message || 'Error al registrar.', 'warning'); 
   }
 }
@@ -906,7 +906,7 @@ async function saveDriver() {
     const result = await api('/drivers', { method:'POST', body });
     console.log('Conductor creado:', result);
     closeDriverModal();
-    showToast('👤 Conductor registrado.', 'info');
+    showToast('?? Conductor registrado.', 'info');
   } catch (e) { 
     console.error('Error al guardar conductor:', e);
     showToast(e.message || 'Error al registrar.', 'warning'); 
@@ -927,21 +927,21 @@ async function changePassword() {
   const newP    = document.getElementById('newPass').value;
   const confirm  = document.getElementById('confirmPass').value;
   if (!current || !newP || !confirm) { showToast('Todos los campos son requeridos.', 'warning'); return; }
-  if (newP.length < 6) { showToast('La nueva contraseña debe tener al menos 6 caracteres.', 'warning'); return; }
-  if (newP !== confirm) { showToast('Las contraseñas no coinciden.', 'warning'); return; }
+  if (newP.length < 6) { showToast('La nueva contrase?a debe tener al menos 6 caracteres.', 'warning'); return; }
+  if (newP !== confirm) { showToast('Las contrase?as no coinciden.', 'warning'); return; }
   try {
     await api('/auth/change-password', { method:'POST', body:{ currentPassword: current, newPassword: newP }});
     closeChangePassModal();
-    showToast('🔑 Contraseña actualizada correctamente.', 'info');
+    showToast('?? Contrase?a actualizada correctamente.', 'info');
   } catch (e) { showToast(e.message, 'warning'); }
 }
 
-// -- Emergencia / Bot�n de P�nico ------------------------------
+// -- Emergencia / Bot?n de P?nico ------------------------------
 function getLocationString() {
   if (State.userLat && State.userLng) {
-    return 'Ubicaci�n: https://maps.google.com/?q=' + State.userLat + ',' + State.userLng;
+    return 'Ubicaci?n: https://maps.google.com/?q=' + State.userLat + ',' + State.userLng;
   }
-  return 'Ubicaci�n no disponible';
+  return 'Ubicaci?n no disponible';
 }
 
 function panicButton() {
@@ -1009,8 +1009,8 @@ function callNow(phone) {
 
 function sendWhatsApp(phone) {
   const loc = State.userLat && State.userLng ?
-    `Ubicación: https://maps.google.com/?q=${State.userLat},${State.userLng}` :
-    'Ubicación no disponible';
+    `Ubicaci?n: https://maps.google.com/?q=${State.userLat},${State.userLng}` :
+    'Ubicaci?n no disponible';
   const msg = `Emergencia Rutograma\n${loc}\nPor favor comunicarse.`;
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
@@ -1024,7 +1024,7 @@ function closeUrgencyModal() { document.getElementById('urgencyModal').classList
 async function uploadLogo(event) {
   const file = event.target.files[0];
   if (!file) return;
-  if (!file.type.startsWith('image/')) { showToast('Selecciona una imagen válida', 'warning'); return; }
+  if (!file.type.startsWith('image/')) { showToast('Selecciona una imagen v?lida', 'warning'); return; }
 
   const formData = new FormData();
   formData.append('logo', file);
@@ -1039,7 +1039,7 @@ async function uploadLogo(event) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al subir');
-    showToast('✅ Logo actualizado correctamente', 'info');
+    showToast('? Logo actualizado correctamente', 'info');
     setTimeout(() => location.reload(), 1000);
   } catch (e) {
     showToast(e.message || 'Error al subir logo', 'warning');
@@ -1055,7 +1055,7 @@ function getRiskColor(severity) {
 }
 
 async function deleteRisk(id, lat, lng) {
-  if (!confirm('¿Eliminar este punto de riesgo?')) return;
+  if (!confirm('?Eliminar este punto de riesgo?')) return;
   try {
     await api(`/riskpoints/${id}`, { method: 'DELETE' });
     loadNearbyRisks(State.userLat, State.userLng);
@@ -1065,7 +1065,7 @@ async function deleteRisk(id, lat, lng) {
   }
 }
 
-// ── IA: EVALUACIÓN DE RUTA ────────────────────────────────────
+// ?? IA: EVALUACI?N DE RUTA ????????????????????????????????????
 function toggleAiPanel() {
   const panel = document.getElementById('aiPanel');
   panel.classList.toggle('open');
@@ -1096,30 +1096,30 @@ async function evaluateRouteAI() {
     const medRisks = risks.filter(r => r.severity === 'medium').length;
     score -= highRisks * 15;
     score -= medRisks * 8;
-    factors.push({ icon: '⚠️', text: `${risks.length} puntos de riesgo en la ruta`, impact: highRisks > 0 ? 'high' : 'medium' });
+    factors.push({ icon: '??', text: `${risks.length} puntos de riesgo en la ruta`, impact: highRisks > 0 ? 'high' : 'medium' });
   }
 
   // Alertas Waze
   if (wazeAlerts.length > 0) {
     score -= wazeAlerts.length * 5;
-    factors.push({ icon: '📡', text: `${wazeAlerts.length} alertas Waze activas`, impact: wazeAlerts.length > 3 ? 'high' : 'medium' });
+    factors.push({ icon: '??', text: `${wazeAlerts.length} alertas Waze activas`, impact: wazeAlerts.length > 3 ? 'high' : 'medium' });
   }
 
   // Clima
   if (weather.rain) {
     score -= 20;
-    factors.push({ icon: '🌧️', text: `Lluvia: ${weather.rain} mm`, impact: 'high' });
+    factors.push({ icon: '???', text: `Lluvia: ${weather.rain} mm`, impact: 'high' });
   }
   if (weather.fog) {
     score -= 15;
-    factors.push({ icon: '🌫️', text: 'Niebla reportada', impact: 'medium' });
+    factors.push({ icon: '???', text: 'Niebla reportada', impact: 'medium' });
   }
 
-  // Tiempo de viaje (noche = más riesgo)
+  // Tiempo de viaje (noche = m?s riesgo)
   const hour = new Date().getHours();
   if (hour < 6 || hour > 20) {
     score -= 10;
-    factors.push({ icon: '🌙', text: 'Viaje en horario nocturno', impact: 'medium' });
+    factors.push({ icon: '??', text: 'Viaje en horario nocturno', impact: 'medium' });
   }
 
   score = Math.max(0, Math.min(100, score));
@@ -1127,7 +1127,7 @@ async function evaluateRouteAI() {
   let scoreClass = 'excellent';
   let scoreText = 'Excelente';
   if (score < 40) { scoreClass = 'danger'; scoreText = 'Riesgosa'; }
-  else if (score < 60) { scoreClass = 'warning'; scoreText = 'Precaución'; }
+  else if (score < 60) { scoreClass = 'warning'; scoreText = 'Precauci?n'; }
   else if (score < 80) { scoreClass = 'good'; scoreText = 'Buena'; }
 
   let html = `
@@ -1139,7 +1139,7 @@ async function evaluateRouteAI() {
   `;
 
   if (factors.length === 0) {
-    html += '<div style="color:var(--text2);font-size:.85rem;padding:8px 0">✅ No se detectaron factores de riesgo</div>';
+    html += '<div style="color:var(--text2);font-size:.85rem;padding:8px 0">? No se detectaron factores de riesgo</div>';
   } else {
     factors.forEach(f => {
       html += `
@@ -1154,14 +1154,14 @@ async function evaluateRouteAI() {
 
   html += `
     <div style="margin-top:16px;padding:12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:.82rem;color:var(--text2)">
-      🤖 Evaluación generada por IA basada en riesgos detectados, tráfico Waze y condiciones climáticas.
+      ?? Evaluaci?n generada por IA basada en riesgos detectados, tr?fico Waze y condiciones clim?ticas.
     </div>
   `;
 
   document.getElementById('aiPanelBody').innerHTML = html;
 }
 
-// ── CARGAR ALERTAS WAZE EN MAPA ────────────────────────────────
+// ?? CARGAR ALERTAS WAZE EN MAPA ????????????????????????????????
 async function loadWazeAlerts(lat, lng) {
   try {
     const data = await api(`/external/waze?lat=${lat}&lng=${lng}&radius=10`);
@@ -1173,13 +1173,13 @@ async function loadWazeAlerts(lat, lng) {
       const marker = L.marker([alert.location.y, alert.location.x], {
         icon: L.divIcon({
           className: 'waze-alert-marker',
-          html: '⚠️',
+          html: '??',
           iconSize: [28, 28],
           iconAnchor: [14, 14]
         })
       }).addTo(State.map);
 
-      const popup = `<div class="waze-alert-popup"><div class="w-type">${alert.type || 'Alerta'}</div><div class="w-desc">${alert.reportDescription || 'Sin descripción'}</div></div>`;
+      const popup = `<div class="waze-alert-popup"><div class="w-type">${alert.type || 'Alerta'}</div><div class="w-desc">${alert.reportDescription || 'Sin descripci?n'}</div></div>`;
       marker.bindPopup(popup);
       State.wazeMarkers.push(marker);
     });
@@ -1188,7 +1188,7 @@ async function loadWazeAlerts(lat, lng) {
   }
 }
 
-// ── ACTIVAR MODO AGREGAR RIESGO ────────────────────────────────
+// ?? ACTIVAR MODO AGREGAR RIESGO ????????????????????????????????
 function enableAddRiskMode() {
   State.addRiskMode = true;
   showToast('Toca el mapa para registrar un riesgo', 'info', 3000);
@@ -1233,10 +1233,10 @@ async function saveRiskPoint() {
     }).addTo(State.map);
 
     const popupContent = `<b>${name}</b><br>Severidad: ${severity}<br>Tipo: ${type}<br>
-      <button onclick="deleteRisk('${result.id}',${clickLatLng.lat},${clickLatLng.lng})">🗑️ Eliminar</button>`;
+      <button onclick="deleteRisk('${result.id}',${clickLatLng.lat},${clickLatLng.lng})">??? Eliminar</button>`;
     marker.bindPopup(popupContent);
 
-    showToast('⚠️ Riesgo registrado en el mapa', 'warning');
+    showToast('?? Riesgo registrado en el mapa', 'warning');
     closeAddRiskModal();
   } catch (e) {
     showToast(e.message || 'Error al guardar riesgo', 'warning');
@@ -1246,7 +1246,7 @@ async function saveRiskPoint() {
 }
 
 function deleteRisk(id, lat, lng) {
-  if (!confirm('¿Eliminar este punto de riesgo?')) return;
+  if (!confirm('?Eliminar este punto de riesgo?')) return;
   try {
     api(`/riskpoints/${id}`, { method: 'DELETE' });
     // Remover marcador del mapa (simplificado: recargar)
@@ -1256,7 +1256,7 @@ function deleteRisk(id, lat, lng) {
   }
 }
 
-// ── MODIFICAR CALCULAR RUTA PARA INCLUIR WAZE E IA ───────────
+// ?? MODIFICAR CALCULAR RUTA PARA INCLUIR WAZE E IA ???????????
 const originalCalculateRoute = calculateRoute;
 calculateRoute = async function() {
   await originalCalculateRoute();
@@ -1272,25 +1272,25 @@ calculateRoute = async function() {
   }
 };
 
-// ── AGREGAR BOTÓN DE RIESGO EN EL MENÚ ────────────────────────
+// ?? AGREGAR BOT?N DE RIESGO EN EL MEN? ????????????????????????
 document.addEventListener('DOMContentLoaded', () => {
   const nav = document.querySelector('.app-sidebar-nav');
   if (nav) {
     const riskItem = document.createElement('div');
     riskItem.className = 'nav-item';
     riskItem.onclick = () => { enableAddRiskMode(); toggleAppMenu(); };
-    riskItem.innerHTML = '<span>⚠️</span> Agregar Riesgo en Mapa';
+    riskItem.innerHTML = '<span>??</span> Agregar Riesgo en Mapa';
     nav.appendChild(riskItem);
   }
 
-  // Cargar números de pánico guardados
+  // Cargar n?meros de p?nico guardados
   const saved = localStorage.getItem('panicPhones');
   if (saved) {
     try { State.panicPhones = JSON.parse(saved); } catch(e) {}
   }
 });
 
-// ── CONFIGURACIÓN BOTÓN DE PÁNICO ──────────────────────────────
+// ?? CONFIGURACI?N BOT?N DE P?NICO ??????????????????????????????
 function openPanicConfigModal() {
   const phones = State.panicPhones || ['974328000', '948340370'];
   document.getElementById('panicPhone1').value = phones[0] || '';
@@ -1306,7 +1306,7 @@ function savePanicNumbers() {
   const p2 = document.getElementById('panicPhone2').value.trim();
   const p3 = document.getElementById('panicPhone3').value.trim();
 
-  if (!p1) { showToast('El númeno 1 es requerido', 'warning'); return; }
+  if (!p1) { showToast('El n?meno 1 es requerido', 'warning'); return; }
 
   const phones = [p1];
   if (p2) phones.push(p2);
@@ -1315,10 +1315,10 @@ function savePanicNumbers() {
   State.panicPhones = phones;
   localStorage.setItem('panicPhones', JSON.stringify(phones));
   closePanicConfigModal();
-  showToast('✅ Números de pánico actualizados', 'info');
+  showToast('? N?meros de p?nico actualizados', 'info');
 }
 
-// ── MODIFICAR BOTÓN DE PÁNICO PARA USAR NÚMEROS GUARDADOS ─────
+// ?? MODIFICAR BOT?N DE P?NICO PARA USAR N?MEROS GUARDADOS ?????
 const originalPanicButton = panicButton;
 panicButton = function() {
   const phones = (State.panicPhones && State.panicPhones.length > 0) ?
@@ -1341,7 +1341,7 @@ panicButton = function() {
   showToast("Enviando emergencia por WhatsApp...", "warning", 3000);
 };
 
-// ── CARGAR RIESGOS EXISTENTES ────────────────────────
+// ?? CARGAR RIESGOS EXISTENTES ????????????????????????
 async function loadExistingRisks() {
   try {
     const risks = await api('/riskpoints');
@@ -1352,18 +1352,17 @@ async function loadExistingRisks() {
       }).addTo(State.map);
 
       const popup = `<b>${r.name || r.type}</b><br>Severidad: ${r.severity}<br>
-        <button onclick="deleteRisk('${r.id}')">🗑️ Eliminar</button>`;
+        <button onclick="deleteRisk('${r.id}')">??? Eliminar</button>`;
       marker.bindPopup(popup);
     });
   } catch (e) {
     console.error('Error cargando riesgos:', e);
   }
 }
-}
 
-// ── ELIMINAR RIESGO ───────────────────────────────────
+// ?? ELIMINAR RIESGO ???????????????????????????????????
 function deleteRisk(id) {
-  if (!confirm('¿Eliminar este punto de riesgo?')) return;
+  if (!confirm('?Eliminar este punto de riesgo?')) return;
   try {
     api(`/riskpoints/${id}`, { method: 'DELETE' });
     showToast('Riesgo eliminado', 'info');
