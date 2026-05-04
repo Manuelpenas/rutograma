@@ -1,4 +1,4 @@
-const { DatabaseSync } = require('node:sqlite');
+const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
@@ -12,14 +12,14 @@ if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 let db;
 
 function getDb() {
-  if (!db) db = new DatabaseSync(DB_PATH);
+  if (!db) db = new Database(DB_PATH);
   return db;
 }
 
 function initializeDatabase() {
   const db = getDb();
-  db.exec('PRAGMA journal_mode = WAL');
-  db.exec('PRAGMA foreign_keys = ON');
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS tenants (
@@ -198,14 +198,14 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_tracking_trip     ON trip_tracking(trip_id);
   `);
 
-  // ── Migraciones de columnas nuevas (idempotentes) ─────────────────────────
+  // Migraciones de columnas nuevas (idempotentes)
   const migrations = [
     "ALTER TABLE tenants ADD COLUMN logo_url     TEXT",
     "ALTER TABLE tenants ADD COLUMN favicon_url  TEXT",
     "ALTER TABLE tenants ADD COLUMN ai_api_key   TEXT",
     "ALTER TABLE tenants ADD COLUMN primary_color TEXT DEFAULT '#1a73e8'",
   ];
-  migrations.forEach(sql => { try { db.exec(sql); } catch {} });
+  migrations.forEach(sql => { try { db.exec(sql); } catch(e) {} });
 
   createSuperAdmin(db);
   console.log('[DB] Base de datos inicializada correctamente.');
